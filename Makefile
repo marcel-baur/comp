@@ -1,24 +1,41 @@
-TARGET = prog
-LIBS = -lm
-CC = gcc
-CFLAGS = -g -Wall
+TARGET_EXEC ?= a.out
 
-.PHONY: default all clean
+BUILD_DIR ?= ./build
+SRC_DIRS ?= ./src
 
-default: $(TARGET)
-all: default
+SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
+OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
+DEPS := $(OBJS:.o=.d)
 
-OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
-HEADERS = $(wildcard *.h)
+INC_DIRS := $(shell find $(SRC_DIRS) -type d)
+INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
-%.o: %.c $(HEADERS)
-    $(CC) $(CFLAGS) -c $< -o $@
+CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
 
-.PRECIOUS: $(TARGET) $(OBJECTS)
+$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
-$(TARGET): $(OBJECTS)
-    $(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+# assembly
+$(BUILD_DIR)/%.s.o: %.s
+	$(MKDIR_P) $(dir $@)
+	$(AS) $(ASFLAGS) -c $< -o $@
+
+# c source
+$(BUILD_DIR)/%.c.o: %.c
+	$(MKDIR_P) $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+# c++ source
+$(BUILD_DIR)/%.cpp.o: %.cpp
+	$(MKDIR_P) $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
+
+.PHONY: clean
 
 clean:
-    -rm -f *.o
-    -rm -f $(TARGET)
+	$(RM) -r $(BUILD_DIR)
+
+-include $(DEPS)
+
+MKDIR_P ?= mkdir -p

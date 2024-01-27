@@ -1,0 +1,38 @@
+#ifndef comp_scanner_h
+#define comp_scanner_h
+
+typedef enum {
+	TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN,
+	TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE,
+	TOKEN_COMMA, TOKEN_DOT, TOKEN_MINUS, TOKEN_PLUS,
+	TOKEN_SEMICOLON, TOKEN_SLASH, TOKEN_STAR,
+
+	TOKEN_BANG, TOKEN_BANG_EQ,
+	TOKEN_EQ, TOKEN_EQ_EQ,
+	TOKEN_GREATER, TOKEN_GEQ,
+	TOKEN_LESS, TOKEN_LEQ,
+
+	TOKEN_IDENTIFIER, TOKEN_STRING, TOKEN_NUMBER,
+
+	TOKEN_AND, TOKEN_CLASS, TOKEN_ELSE, TOKEN_FALSE,
+	TOKEN_FOR, TOKEN_FUN, TOKEN_IF, TOKEN_NIL, TOKEN_OR,
+	TOKEN_PRINT, TOKEN_RETURN, TOKEN_SUPER, TOKEN_THIS,
+	TOKEN_TRUE, TOKEN_VAR, TOKEN_WHILE,
+
+	TOKEN_DOUBLE_COLON, TOKEN_COLON, // @Experimental
+
+	TOKEN_ERROR, TOKEN_EOF
+} TokenType;
+
+typedef struct {
+	TokenType type;
+	const char* start;
+	int length;
+	int line;
+} Token;
+
+void init_scanner(const char* source);
+
+Token scan_token();
+
+#endif // !comp_scanner_h

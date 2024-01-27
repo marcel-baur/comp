@@ -10,8 +10,11 @@ int main(int argc, const char* argv[]) {
     // int constant = add_constant(&chunk, 1.2);
     // write_chunk(&chunk, OP_CONSTANT, 123);
     // write_chunk(&chunk, constant, 123);
-    write_constant(&chunk, 1.2, 123);
-    write_constant(&chunk, 1.8, 123);
+    for (int idx = 1; idx < 10; idx++) {
+        write_constant(&chunk, (Value) idx, idx + 100);
+    }
+    // write_constant(&chunk, 1.2, 123);
+    // write_constant(&chunk, 1.8, 123);
     write_chunk(&chunk, OP_NEGATE, 123);
     write_chunk(&chunk, OP_RETURN, 124);
     disassemble_chunk(&chunk, "test chunk");

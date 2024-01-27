@@ -4,12 +4,12 @@
 #include "chunk.h"
 #include "value.h"
 
-#define STACK_MAX 256
+#define STACK_MAX 256 // @Improve: grow dynamically
 
 typedef struct {
 	Chunk* chunk;
 	uint8_t* ip;
-	Value stack[STACK_MAX];
+	Value stack[STACK_MAX]; // @Improve: grow dynamically
 	Value* stackTop;
 } VM;
 

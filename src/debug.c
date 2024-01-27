@@ -43,6 +43,14 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return long_constant_instruction("OP_CONSTANT_LONG", chunk, offset);
     case OP_NEGATE:
         return simple_instruction("OP_NEGATE", offset);
+    case OP_ADD:
+        return simple_instruction("OP_ADD", offset);
+    case OP_SUBSTRACT:
+        return simple_instruction("OP_SUBSTRACT", offset);
+    case OP_MULTIPLY:
+        return simple_instruction("OP_MULTIPLY", offset);
+    case OP_DIVIDE:
+        return simple_instruction("OP_DIVIDE", offset);
     default:
         printf("Unknown opcode %d\n", instruction);
         return offset + 1;

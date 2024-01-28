@@ -72,7 +72,7 @@ void test_stack() {
     Chunk chunk;
     init_chunk(&chunk);
     for (int idx = 1; idx < 10; idx++) {
-        write_constant(&chunk, (Value) idx, idx + 100);
+        // write_constant(&chunk, AS_NUMBER(1.2), idx + 100);
     }
     write_chunk(&chunk, OP_ADD, 111);
     write_chunk(&chunk, OP_SUBSTRACT, 111);

@@ -43,4 +43,6 @@ void free_value_array(ValueArray* array);
 
 void print_value(Value value);
 
+bool values_equal(Value v1, Value v2);
+
 #endif

@@ -35,6 +35,10 @@ static void runtime_error(const char* format, ...) {
     reset_stack();
 }
 
+static bool is_falsey(Value value) {
+    return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
 static InterpretResult run() {
     #define READ_BYTE() (*vm.ip++)
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
@@ -83,10 +87,22 @@ static InterpretResult run() {
                 push(constant);
                 break;
             }
+            case OP_EQ: {
+                Value a = pop();
+                Value b = pop();
+                push(BOOL_VAL(values_equal(a, b)));
+                break;
+            }
+            case OP_GREATER: BINARY_OP(BOOL_VAL, >); break;
+            case OP_LESS: BINARY_OP(BOOL_VAL, <); break;
             case OP_ADD: BINARY_OP(NUMBER_VAL, +); break;
             case OP_SUBSTRACT: BINARY_OP(NUMBER_VAL, -); break;
             case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
             case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /); break;
+            case OP_NIL: push(NIL_VAL()); break;
+            case OP_TRUE: push(BOOL_VAL(true)); break;
+            case OP_FALSE: push(BOOL_VAL(false)); break;
+            case OP_NOT: push(BOOL_VAL(is_falsey(pop()))); break;
         }
     }
 

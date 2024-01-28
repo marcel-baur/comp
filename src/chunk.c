@@ -35,6 +35,14 @@ int add_constant(Chunk *chunk, Value value) {
     return chunk->constants.count - 1;
 }
 
+int add_constant_generic(Chunk *chunk, Value value) {
+    int idx = add_constant(chunk, value);
+    if (idx < 256) {
+        return idx;
+    }
+    return idx;
+}
+
 void write_constant(Chunk *chunk, Value value, int line) {
     int idx = add_constant(chunk, value);
     if (idx < 256) {

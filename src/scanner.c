@@ -167,6 +167,7 @@ void init_scanner(const char* source) {
 }
 
 Token scan_token() {
+    skip_whitespace();
     scanner.start = scanner.current;
 
     if (is_at_end()) return make_token(TOKEN_EOF);

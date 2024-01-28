@@ -14,7 +14,6 @@ static void repl() {
             printf("\n");
             break;
         }
-
         interpret(line);
     }
 }
@@ -35,6 +34,7 @@ static char* read_file(const char* path) {
         fprintf(stderr, "Not enough memory to read file \"%s\".\n", path);
         exit(74);
     }
+    // @Improve: read the entire file, RAM should be enough for most cases;
     size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
     if (bytesRead < fileSize) {
         fprintf(stderr, "Could not read file \"%s\".\n", path);

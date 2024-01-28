@@ -17,6 +17,11 @@ typedef enum {
 } OpCode;
 
 typedef struct {
+	OpCode opcode;
+	int idx;
+} AddConstantReturn;
+
+typedef struct {
 	int count;
 	int capacity;
 	uint8_t* code;
@@ -31,6 +36,8 @@ void write_chunk(Chunk* chunk, uint8_t byte, int line);
 void free_chunk(Chunk* chunk);
 
 int add_constant(Chunk* chunk, Value value);
+
+int add_constant_generic(Chunk* chunk, Value value);
 
 void write_constant(Chunk* chunk, Value value, int line);
 

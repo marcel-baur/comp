@@ -3,6 +3,7 @@
 #include "value.h"
 #include "vm.h"
 #include "debug.h"
+#include "compiler.h"
 #include <stdio.h>
 
 VM vm;
@@ -77,6 +78,17 @@ InterpretResult interpret_chunk(Chunk *chunk) {
 
 InterpretResult interpret(const char* source) {
     InterpretResult result;
+    Chunk chunk;
+    init_chunk(&chunk);
+    if (!compile(source, &chunk)) {
+        free_chunk(&chunk);
+        return INTERPRET_COMPILE_ERR;
+    }
+    vm.chunk = &chunk;
+    vm.ip = vm.chunk->code;
+    result = run();
+
+    free_chunk(&chunk);
     return result;
 }
 

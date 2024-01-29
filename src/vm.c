@@ -18,8 +18,11 @@ static void reset_stack() {
 
 void initVM() {
     reset_stack();
+    vm.objects = NULL;
 }
-void freeVM() {}
+void freeVM() {
+    free_objects();
+}
 
 static Value peek(int distance) {
     return vm.stackTop[-1 - distance];

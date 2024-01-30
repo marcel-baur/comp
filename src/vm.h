@@ -2,6 +2,7 @@
 #define comp_vm_h
 
 #include "chunk.h"
+#include "table.h"
 #include "value.h"
 
 #define STACK_MAX 256 // @Improve: grow dynamically
@@ -11,6 +12,7 @@ typedef struct {
 	uint8_t* ip;
 	Value stack[STACK_MAX]; // @Improve: grow dynamically
 	Value* stackTop;
+	Table strings;
 	Obj* objects;
 } VM;
 

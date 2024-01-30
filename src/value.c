@@ -42,12 +42,7 @@ bool values_equal(Value v1, Value v2) {
         case VAL_BOOL: return AS_BOOL(v1) == AS_BOOL(v2); break;
         case VAL_NUMBER: return AS_NUMBER(v1) == AS_NUMBER(v2); break;
         case VAL_NIL: return true; // @Note: both are nil, thus true
-        case VAL_OBJ: {
-            ObjString* sv1 = AS_STRING(v1);
-            ObjString* sv2 = AS_STRING(v2);
-            return sv1->length == sv2->length && memcmp(sv1->chars, sv2->chars, sv1->length) == 0;
-                
-        }
+        case VAL_OBJ: return AS_OBJ(v1) == AS_OBJ(v2);
         default: return false;
     }
 }

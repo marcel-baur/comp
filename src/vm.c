@@ -89,11 +89,6 @@ static InterpretResult run() {
         #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
-            case OP_RETURN: {
-                print_value(pop());
-                printf("\n");
-                return INTERPRET_OK;
-            }
             case OP_NEGATE: 
                 if (!IS_NUMBER(peek(0))) {
                     runtime_error("Operand must be a number, got %d", peek(0));
@@ -131,6 +126,12 @@ static InterpretResult run() {
                 }
                 break;
             } 
+            case OP_PRINT: {
+                print_value(pop());
+                printf("\n");
+                break;
+            }
+            // case OP_RETURN: return INTERPRET_OK;
             case OP_SUBSTRACT: BINARY_OP(NUMBER_VAL, -); break;
             case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
             case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /); break;
@@ -138,6 +139,7 @@ static InterpretResult run() {
             case OP_TRUE: push(BOOL_VAL(true)); break;
             case OP_FALSE: push(BOOL_VAL(false)); break;
             case OP_NOT: push(BOOL_VAL(is_falsey(pop()))); break;
+            default: return INTERPRET_OK;
         }
     }
 
@@ -163,6 +165,7 @@ InterpretResult interpret(const char* source) {
     }
     vm.chunk = &chunk;
     vm.ip = vm.chunk->code;
+    InterpretResult ir;
     result = run();
 
     free_chunk(&chunk);

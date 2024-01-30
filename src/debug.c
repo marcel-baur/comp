@@ -65,6 +65,8 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return simple_instruction("OP_LESS", offset);
     case OP_EQ:
         return simple_instruction("OP_EQ", offset);
+    case OP_PRINT:
+        return simple_instruction("OP_PRINT", offset);
     default:
         printf("Unknown opcode %d\n", instruction);
         return offset + 1;

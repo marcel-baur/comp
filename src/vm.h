@@ -13,6 +13,7 @@ typedef struct {
 	Value stack[STACK_MAX]; // @Improve: grow dynamically
 	Value* stackTop;
 	Table strings;
+	Table globals;
 	Obj* objects;
 } VM;
 

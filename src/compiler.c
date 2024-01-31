@@ -31,7 +31,7 @@ typedef enum {
     PREC_PRIMARY,
 } Precedence;
 
-typedef void (*ParseFn)();
+typedef void (*ParseFn)(bool canAssign);
 
 typedef struct {
     ParseFn prefix;
@@ -127,6 +127,13 @@ static void emit_bytes(uint8_t b1, uint8_t b2) {
     emit_byte(b2);
 }
 
+static void emit_long_bytes(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) {
+    emit_byte(b1);
+    emit_byte(b2);
+    emit_byte(b3);
+    emit_byte(b4);
+}
+
 static void emit_return() {
     emit_byte(OP_RETURN);
 }
@@ -143,6 +150,7 @@ static void end_compiler() {
 static void expression();
 static void statement();
 static void declaration();
+static int make_constant(Value value);
 static ParseRule* get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
 
@@ -153,18 +161,49 @@ static void parse_precedence(Precedence precedence) {
         error("Expect expression.");
         return;
     }
+    bool canAssign = precedence <= PREC_ASSIGN;
 
-    prefix_rule();
+    prefix_rule(canAssign);
 
     while (precedence <= get_rule(parser.current.type)->precedence) {
         advance();
         ParseFn infix_rule = get_rule(parser.previous.type)->infix;
-        infix_rule();
+        infix_rule(canAssign);
     }
+
+    if (canAssign && match(TOKEN_EQ)) {
+        error("Invalid assignment target.");
+    }
+}
+
+static int identifier_constant(Token* name) {
+    return make_constant(OBJ_VAL(copy_string(name->start, name->length)));
+}
+
+static int parse_variable(const char* errorMsg) {
+    consume(TOKEN_IDENTIFIER, errorMsg);
+    return identifier_constant(&parser.previous);
+}
+
+static void define_variable(uint8_t global) {
+    // @Cleanup: use a CONST_16 type opcode (emit 3 bytes) for 256*256 variables. Adjust READ_STRING()!!
+    emit_long_bytes(OP_DEFINE_GLOBAL,(uint8_t) (global & 0xff), (uint8_t) ((global >> 8) & 0xff), ((global >> 16) & 0xff)); 
 }
 
 static void expression() {
     parse_precedence(PREC_ASSIGN);
+}
+
+static void let_declaration() {
+    uint8_t global = parse_variable("Expect variable name.");
+
+    if (match(TOKEN_EQ)) {
+        expression();
+    } else {
+        emit_byte(OP_NIL);
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    define_variable(global);
 }
 
 static void print_statement() {
@@ -173,22 +212,58 @@ static void print_statement() {
     emit_byte(OP_PRINT);
 }
 
+static void expression_statement() {
+    expression();
+    consume(TOKEN_SEMICOLON,  "Expect ';' after value.");
+    emit_byte(OP_POP);
+}
+
+static void synchronize() {
+    parser.panicMode = false;
+
+    while (parser.current.type != TOKEN_EOF) {
+        if (parser.previous.type == TOKEN_SEMICOLON) return;
+        switch (parser.current.type) {
+            case TOKEN_CLASS:
+            case TOKEN_FUN:
+            case TOKEN_LET:
+            case TOKEN_FOR:
+            case TOKEN_IF:
+            case TOKEN_WHILE:
+            case TOKEN_PRINT:
+            case TOKEN_RETURN:
+                return;
+            default:
+            ; // @Noop
+        }
+
+        advance();
+    }
+}
+
 static void statement() {
     if (match(TOKEN_PRINT)) {
         print_statement();
-    } 
+    }  else {
+        expression_statement();
+    }
 }
 
 static void declaration() {
-    statement();
+    if (match(TOKEN_LET)) {
+        let_declaration();
+    } else {
+        statement();
+    }
+    if (parser.panicMode) synchronize();
 }
 
-static void grouping() {
+static void grouping(bool canAssign) {
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void unary() {
+static void unary(bool canAssign) {
     TokenType operatorType = parser.previous.type;
     parse_precedence(PREC_UNARY);
 
@@ -199,7 +274,7 @@ static void unary() {
     }
 }
 
-static void binary() {
+static void binary(bool canAssign) {
     TokenType operatorType = parser.previous.type;
     ParseRule* rule = get_rule(operatorType);
     parse_precedence((Precedence) (rule->precedence + 1));
@@ -233,12 +308,12 @@ static void emit_constant(Value value) {
 //   emitBytes(OP_CONSTANT, makeConstant(value)); // @Closed: differentiate between constant, constant_long
 // }
 
-static void number() {
+static void number(bool canAssign) {
     double value = strtod(parser.previous.start, NULL);
     emit_constant(NUMBER_VAL(value));
 }
 
-static void literal() {
+static void literal(bool canAssign) {
     switch (parser.previous.type) {
         case TOKEN_FALSE: emit_byte(OP_FALSE); return;
         case TOKEN_TRUE: emit_byte(OP_TRUE); return;
@@ -247,8 +322,22 @@ static void literal() {
     }
 }
 
-static void string() {
+static void string(bool canAssign) {
     emit_constant(OBJ_VAL(copy_string(parser.previous.start + 1, parser.previous.length - 2)));
+}
+
+static void named_variable(Token name, bool canAssign) {
+    int arg = identifier_constant(&name);
+    if (canAssign && match(TOKEN_EQ)) {
+        expression();
+        emit_long_bytes(OP_SET_GLOBAL, (uint8_t) (arg & 0xff), (uint8_t) ((arg >> 8) & 0xff), ((arg >> 16) & 0xff));
+    } else {
+        emit_long_bytes(OP_GET_GLOBAL, (uint8_t) (arg & 0xff), (uint8_t) ((arg >> 8) & 0xff), ((arg >> 16) & 0xff));
+    }
+}
+
+static void variable(bool canAssign) {
+    named_variable(parser.previous, canAssign);
 }
 
 ParseRule rules[] = {
@@ -271,7 +360,7 @@ ParseRule rules[] = {
     [TOKEN_GEQ] = {NULL, binary, PREC_COMPARE},
     [TOKEN_LESS] = {NULL, binary, PREC_COMPARE},
     [TOKEN_LEQ] = {NULL, binary, PREC_COMPARE},
-    [TOKEN_IDENTIFIER] = {NULL, NULL, PREC_NONE},
+    [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
     [TOKEN_AND] = {NULL, NULL, PREC_NONE},
@@ -288,7 +377,7 @@ ParseRule rules[] = {
     [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
     [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
-    [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LET] = {NULL, NULL, PREC_NONE},
     [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF] = {NULL, NULL, PREC_NONE},

@@ -99,8 +99,8 @@ static TokenType identifier_type() {
         case 'r': return check_keyword(1, 4, "eturn", TOKEN_RETURN);
         case 'p': return check_keyword(1, 4, "rint", TOKEN_PRINT);
         case 's': return check_keyword(1, 4, "uper", TOKEN_SUPER);
-        case 'v': return check_keyword(1, 2, "ar", TOKEN_VAR);
-        case 'w': return check_keyword(1, 4, "hile", TOKEN_VAR);
+        case 'l': return check_keyword(1, 2, "et", TOKEN_LET);
+        case 'w': return check_keyword(1, 4, "hile", TOKEN_LET);
         case 't': 
             if (scanner.current - scanner.start > 1) {
                 switch (scanner.start[1]) {

@@ -20,10 +20,12 @@ static void reset_stack() {
 void initVM() {
     reset_stack();
     init_table(&vm.strings);
+    init_table(&vm.globals);
     vm.objects = NULL;
 }
 void freeVM() {
     free_table(&vm.strings);
+    free_table(&vm.globals);
     free_objects();
 }
 
@@ -66,6 +68,7 @@ static InterpretResult run() {
     #define READ_BYTE() (*vm.ip++)
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
     #define READ_CONSTANT_LONG() (vm.chunk->constants.values[READ_BYTE() | READ_BYTE() << 8 | READ_BYTE() << 16])
+    #define READ_STRING() AS_STRING(READ_CONSTANT_LONG()) // @Cleanup LONG
     #define BINARY_OP(value_type, op) \
         do { \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) { \
@@ -139,11 +142,39 @@ static InterpretResult run() {
             case OP_TRUE: push(BOOL_VAL(true)); break;
             case OP_FALSE: push(BOOL_VAL(false)); break;
             case OP_NOT: push(BOOL_VAL(is_falsey(pop()))); break;
+            case OP_POP: pop(); break;
+            case OP_DEFINE_GLOBAL: {
+                ObjString* name = READ_STRING();
+                table_set(&vm.globals, name, peek(0));
+                pop();
+                break;
+            }
+            case OP_GET_GLOBAL: {
+                ObjString* name = READ_STRING();
+                Value value;
+                if (!table_get(&vm.globals, name, &value)) {
+                    runtime_error("Undefined variable '%s'", name->chars);
+                    return INTERPRET_RUNTIME_ERR;
+                }
+                push(value);
+                break;
+            }
+            case OP_SET_GLOBAL: {
+                ObjString* name = READ_STRING();
+                if (table_set(&vm.globals, name, peek(0))) {
+                    // @Note: allow this if we do implicit variable declaration
+                    table_delete(&vm.globals, name);
+                    runtime_error("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERR;
+                }
+                break;
+            }
             default: return INTERPRET_OK;
         }
     }
 
     #undef READ_BYTE
+    #undef READ_STRING
     #undef READ_CONSTANT
     #undef READ_CONSTANT_LONG
     #undef BINARY_OP
@@ -165,7 +196,6 @@ InterpretResult interpret(const char* source) {
     }
     vm.chunk = &chunk;
     vm.ip = vm.chunk->code;
-    InterpretResult ir;
     result = run();
 
     free_chunk(&chunk);

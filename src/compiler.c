@@ -185,6 +185,19 @@ static int make_constant(Value value);
 static ParseRule* get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
 
+static void patch_jump(int offset) {
+    // @Adjustment: Long bytecodes need more than -2
+    int jump = current_chunk()->count - offset - 2;
+
+    if (jump > UINT16_MAX) {
+        error("Too much code to jump over.");
+    }
+
+    current_chunk()->code[offset] = (jump >> 8) & 0xff;
+    current_chunk()->code[offset + 1] = jump & 0xff;
+}
+
+
 static void parse_precedence(Precedence precedence) {
     advance();
     ParseFn prefix_rule = get_rule(parser.previous.type)->prefix;
@@ -311,6 +324,28 @@ static void expression_statement() {
     emit_byte(OP_POP);
 }
 
+static int emit_jump(uint8_t instruction) {
+    emit_byte(instruction);
+    emit_byte(0xff);
+    emit_byte(0xff); // @Improvement: Use LONG jump instruction
+    return current_chunk()->count - 2;
+}
+
+static void if_statement() {
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+    int thenJump = emit_jump(OP_JUMP_IF_FALSE);
+    emit_byte(OP_POP);
+    statement();
+    int elseJump = emit_jump(OP_JUMP);
+    patch_jump(thenJump);
+    emit_byte(OP_POP);
+    if (match(TOKEN_ELSE)) statement();
+    patch_jump(elseJump);
+}
+
 static void synchronize() {
     parser.panicMode = false;
 
@@ -337,6 +372,8 @@ static void synchronize() {
 static void statement() {
     if (match(TOKEN_PRINT)) {
         print_statement();
+    } else if (match(TOKEN_IF)) {
+        if_statement();
     }  else if (match(TOKEN_LEFT_BRACE)) {
         begin_scope();
         block();

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include "chunk.h"
 #include "debug.h"
@@ -24,6 +25,12 @@ static int long_constant_instruction(const char* name, Chunk* chunk, int offset)
     print_value(chunk->constants.values[constant]);
     printf("'\n");
     return offset + 4;
+}
+
+static int byte_instruction(const char* name, Chunk* chunk, int offset) {
+    uint8_t slot = chunk->code[offset + 1];
+    printf("%-16s %4d\n", name, slot);
+    return offset + 2;
 }
 
 int disassemble_instruction(Chunk *chunk, int offset) {
@@ -75,6 +82,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return constant_instruction("OP_GET_GLOBAL", chunk, offset);
     case OP_SET_GLOBAL:
         return constant_instruction("OP_SET_GLOBAL", chunk, offset);
+    case OP_GET_LOCAL:
+        return byte_instruction("OP_GET_LOCAL", chunk, offset);
+    case OP_SET_LOCAL:
+        return byte_instruction("OP_SET_LOCAL", chunk, offset);
     default:
         printf("Unknown opcode %d\n", instruction);
         return offset + 1;

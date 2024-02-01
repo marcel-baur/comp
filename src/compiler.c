@@ -147,6 +147,15 @@ static void emit_long_bytes(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) {
     emit_byte(b4);
 }
 
+static void emit_loop(int loopStart) {
+    emit_byte(OP_LOOP);
+
+    int offset = current_chunk()->count - loopStart + 2;
+    if (offset > UINT16_MAX) error("Loop body to long.");
+    emit_byte((offset >> 8) & 0xff);
+    emit_byte(offset & 0xff);
+}
+
 static void emit_return() {
     emit_byte(OP_RETURN);
 }
@@ -184,6 +193,7 @@ static void declaration();
 static int make_constant(Value value);
 static ParseRule* get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
+static int emit_jump(uint8_t instruction);
 
 static void patch_jump(int offset) {
     // @Adjustment: Long bytecodes need more than -2
@@ -289,6 +299,24 @@ static void define_variable(uint8_t global) {
     emit_long_bytes(OP_DEFINE_GLOBAL,(uint8_t) (global & 0xff), (uint8_t) ((global >> 8) & 0xff), ((global >> 16) & 0xff)); 
 }
 
+static void and_(bool canAssign) {
+    int endJump = emit_jump(OP_JUMP_IF_FALSE); // If the left side is false, we know that we can ignore the rest
+    emit_byte(OP_POP);
+    parse_precedence(PREC_AND);
+    patch_jump(endJump);
+}
+
+static void or_(bool canAssign) {
+    int elseJump = emit_jump(OP_JUMP_IF_FALSE);
+    int endJump = emit_jump(OP_JUMP);
+
+    patch_jump(elseJump);
+    emit_byte(OP_POP);
+
+    parse_precedence(PREC_OR);
+    patch_jump(endJump);
+}
+
 static void expression() {
     parse_precedence(PREC_ASSIGN);
 }
@@ -341,12 +369,27 @@ static void if_statement() {
     emit_byte(OP_POP);
     statement();
     int elseJump = emit_jump(OP_JUMP);
-    patch_jump(thenJump);
+    patch_jump(thenJump); // We need to set the location of the jump, which was set to a default val
     emit_byte(OP_POP);
     if (match(TOKEN_ELSE)){
         statement(); 
     } 
-    patch_jump(elseJump);
+    patch_jump(elseJump); // We need to set the location of the jump, which was set to a default val
+}
+
+static void while_statement() {
+    int loopStart = current_chunk()->count;
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+    
+    int exitJump = emit_jump(OP_JUMP_IF_FALSE);
+    emit_byte(OP_POP);
+    statement();
+    emit_loop(loopStart);
+
+    patch_jump(exitJump);
+    emit_byte(OP_POP);
 }
 
 static void synchronize() {
@@ -381,7 +424,9 @@ static void statement() {
         begin_scope();
         block();
         end_scope();
-    } else {
+    } else if (match(TOKEN_WHILE)){
+        while_statement();
+    }else {
         expression_statement();
     }
 }
@@ -516,7 +561,7 @@ ParseRule rules[] = {
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
-    [TOKEN_AND] = {NULL, NULL, PREC_NONE},
+    [TOKEN_AND] = {NULL, and_, PREC_AND},
     [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
     [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
     [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
@@ -524,7 +569,7 @@ ParseRule rules[] = {
     [TOKEN_FUN] = {NULL, NULL, PREC_NONE},
     [TOKEN_IF] = {NULL, NULL, PREC_NONE},
     [TOKEN_NIL] = {literal, NULL, PREC_NONE},
-    [TOKEN_OR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_OR] = {NULL, or_, PREC_OR},
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
     [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},

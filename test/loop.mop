@@ -1,0 +1,7 @@
+let idx = 2;
+while (idx > 0) {
+    print idx;
+	idx = idx - 1;
+}
+
+print idx;

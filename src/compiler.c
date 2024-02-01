@@ -392,6 +392,51 @@ static void while_statement() {
     emit_byte(OP_POP);
 }
 
+static void for_statement() {
+    begin_scope();
+    consume(TOKEN_LEFT_PAREN,  "Expect '(' after 'for'.");
+    if (match(TOKEN_SEMICOLON)){ 
+
+    } else if (match(TOKEN_LET)) {
+        let_declaration();
+    } else {
+        expression_statement();
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';'.");
+
+    int loopStart = current_chunk()->count;
+    int exitJump = -1;
+    if (!match(TOKEN_SEMICOLON)) {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+        exitJump = emit_jump(OP_JUMP_IF_FALSE);
+        emit_byte(OP_POP);
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';'.");
+    // consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clause.");
+
+    if (!match(TOKEN_RIGHT_PAREN)) {
+        int bodyJump = emit_jump(OP_JUMP);
+        int incrementStart = current_chunk()->count;
+        expression();
+        emit_byte(OP_POP);
+        consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clause.");
+
+        emit_loop(loopStart);
+        loopStart = incrementStart;
+        patch_jump(bodyJump);
+    }
+
+    statement();
+    emit_loop(loopStart);
+    if (exitJump != -1) {
+        patch_jump(exitJump);
+        emit_byte(OP_POP);
+    }
+    end_scope();
+}
+
 static void synchronize() {
     parser.panicMode = false;
 
@@ -426,7 +471,10 @@ static void statement() {
         end_scope();
     } else if (match(TOKEN_WHILE)){
         while_statement();
-    }else {
+    } else if (match(TOKEN_FOR)){
+        for_statement();
+    }
+    else {
         expression_statement();
     }
 }

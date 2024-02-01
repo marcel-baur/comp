@@ -1,0 +1,5 @@
+if (true) { 
+		let a = 2;
+} else {
+		let a = 3;
+}

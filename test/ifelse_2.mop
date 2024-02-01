@@ -1,0 +1,13 @@
+let a = "default";
+if (true) { 
+    a = "true";
+} else {
+    a = "false";
+}
+print a;
+if (false) { 
+    a = "second_block";
+} else {
+    a = "second_block->correct";
+}
+print a;

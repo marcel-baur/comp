@@ -1,0 +1,11 @@
+if (false) { 
+		print "oops";
+} else {
+		print "phew";
+}
+
+if (true) { 
+		print "this oops i want";
+} else {
+		print "phew, thats wrong";
+}

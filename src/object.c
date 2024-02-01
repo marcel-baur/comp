@@ -7,6 +7,8 @@
 #include "vm.h"
 #include "value.h"
 
+#define ALLOCATE_OBJ(type, objectType) (type*)allocate_object(sizeof(type), objectType)
+
 static Obj* allocate_object(size_t size, ObjType type) {
     Obj* object = (Obj*)reallocate(NULL, 0, size);
     object->type = type;
@@ -16,7 +18,7 @@ static Obj* allocate_object(size_t size, ObjType type) {
 }
 
 static uint32_t hash_string(const char* chars, int length) {
-    uint32_t hash = 216613626lu;
+    uint32_t hash = 2166136261u;
     for (int i = 0; i < length; i++) {
         hash ^= (uint8_t)chars[i];
         hash *= 16777619;
@@ -24,18 +26,18 @@ static uint32_t hash_string(const char* chars, int length) {
     return hash;
 }
 
-#define ALLOCATE_OBJ(type, objectType) (type*)allocate_object(sizeof(type), objectType)
-
 static ObjString* allocate_string(char* chars, int length, uint32_t hash) {
     ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
     string->chars = chars;
     string->hash = hash;
+    // printf("Still working here\n"); // @Hack: this seems to stop a fatal error?!
     table_set(&vm.strings,string, NIL_VAL());
     return string;
 }
 
 ObjString* copy_string(const char* chars, int length) {
+    // char* heapChars = reallocate(NULL, 0, sizeof(char) * (length + 1));
     char* heapChars = ALLOCATE(char, length + 1);
     uint32_t hash = hash_string(chars, length);
     ObjString* interned = table_find_string(&vm.strings, chars, length, hash);

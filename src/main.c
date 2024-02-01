@@ -20,6 +20,7 @@ static void repl() {
 
 static char* read_file(const char* path) {
     FILE* file = fopen(path, "rb");
+    printf("Opening file %s\n", path);
     if (file == NULL) {
         fprintf(stderr, "Could not open file \"%s\".\n", path);
         exit(74);

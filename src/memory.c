@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "memory.h"
 #include "vm.h"
@@ -16,6 +17,7 @@ static void free_object(Obj* obj) {
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
     if (newSize == 0) {
+        // printf("Reallocating failed! %zu\n", newSize);
         free(pointer);
         return NULL;
     }

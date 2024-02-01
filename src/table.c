@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,7 +11,7 @@
 
 static Entry* find_entry(Entry* entries, int capacity, ObjString* key) {
     uint32_t index = key->hash % capacity;
-    Entry* tombstone;
+    Entry* tombstone = NULL;
     for (;;) {
         Entry* e = &entries[index];
         if (e->key == NULL) {
@@ -60,11 +61,12 @@ void free_table(Table* table) {
     init_table(table);
 }
 
-bool table_set(Table *table, ObjString *key, Value value) {
+bool table_set(Table* table, ObjString* key, Value value) {
     if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
         int capacity = GROW_CAPACITY(table->capacity);
         adjust_capacity(table, capacity);
     }
+    // printf("Still working here\n"); // @Hack: this seems to stop a fatal error?!
     Entry* entry = find_entry(table->entries, table->capacity, key);
     bool isNewKey = entry->key == NULL;
     if (isNewKey && IS_NIL(entry->value)) table->count++;
@@ -73,7 +75,7 @@ bool table_set(Table *table, ObjString *key, Value value) {
     return isNewKey;
 }
 
-void table_add_all(Table *from, Table *to) {
+void table_add_all(Table* from, Table* to) {
     for (int i = 0; i < from->capacity; i++) {
         Entry* e = &from->entries[i];
         if (e->key != NULL) {
@@ -82,7 +84,7 @@ void table_add_all(Table *from, Table *to) {
     }
 }
 
-bool table_get(Table *table, ObjString *key, Value *value) {
+bool table_get(Table* table, ObjString* key, Value* value) {
     if (table->count == 0) return false;
     Entry* e = find_entry(table->entries, table->capacity, key);
     if (e->key == NULL) return false;
@@ -90,7 +92,7 @@ bool table_get(Table *table, ObjString *key, Value *value) {
     return true;
 }
 
-bool table_delete(Table *table, ObjString *key) {
+bool table_delete(Table* table, ObjString* key) {
     if (table->count == 0) return false;
     Entry* e = find_entry(table->entries, table->capacity, key);
     if (e->key == NULL) return false;

@@ -81,6 +81,9 @@ static InterpretResult run() {
             double a = AS_NUMBER(pop()); \
             push(value_type(a op b)); \
         } while (false)
+    #ifdef DEBUG_TRACE_EXECUTION
+            printf("    === DEBUG TRACE EXECUTION ===\n");
+    #endif
     for (;;) {
         #ifdef DEBUG_TRACE_EXECUTION
             disassemble_instruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
@@ -183,7 +186,9 @@ static InterpretResult run() {
             }
             case OP_JUMP_IF_FALSE: {
                 uint16_t offset = READ_SHORT();
-                if (is_falsey(peek(0))) vm.ip += offset;
+                if (is_falsey(peek(0))) {
+                    vm.ip += offset;
+                } 
                 break;
             }
             case OP_JUMP: {

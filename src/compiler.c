@@ -159,6 +159,7 @@ static void emit_loop(int loopStart) {
 }
 
 static void emit_return() {
+    emit_byte(OP_NIL);
     emit_byte(OP_RETURN);
 }
 
@@ -484,6 +485,21 @@ static void for_statement() {
     end_scope();
 }
 
+static void return_statement() {
+    printf("Should be emitting return...\n");
+    if (current->type == TYPE_SCRIPT) {
+        error("Cannot return from global scope.");
+    }
+    if (match(TOKEN_SEMICOLON)) {
+        printf("Emitting return...\n");
+        emit_return();
+    } else {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+        emit_byte(OP_RETURN);
+    }
+}
+
 static void synchronize() {
     parser.panicMode = false;
 
@@ -520,6 +536,9 @@ static void statement() {
         while_statement();
     } else if (match(TOKEN_FOR)){
         for_statement();
+    } else if (match(TOKEN_RETURN)) {
+        printf("Oh boy a return\n");
+        return_statement();
     }
     else {
         expression_statement();

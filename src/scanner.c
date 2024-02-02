@@ -96,7 +96,7 @@ static TokenType identifier_type() {
         case 'i': return check_keyword(1, 1, "f", TOKEN_IF);
         case 'n': return check_keyword(1, 2, "il", TOKEN_NIL);
         case 'o': return check_keyword(1, 1, "r", TOKEN_OR);
-        case 'r': return check_keyword(1, 4, "eturn", TOKEN_RETURN);
+        case 'r': return check_keyword(1, 5, "eturn", TOKEN_RETURN);
         case 'p': return check_keyword(1, 4, "rint", TOKEN_PRINT);
         case 's': return check_keyword(1, 4, "uper", TOKEN_SUPER);
         case 'l': return check_keyword(1, 2, "et", TOKEN_LET);

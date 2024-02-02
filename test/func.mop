@@ -1,0 +1,10 @@
+fun a() {
+	print "Now in fun a";
+	let variable = 2;
+	while (variable > 0) {
+		print variable;
+		return;
+	}
+}
+a();
+print "hello";

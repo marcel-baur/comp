@@ -50,7 +50,8 @@ typedef enum {
     TYPE_SCRIPT
 } FunctionType;
 
-typedef struct {
+typedef struct Compiler {
+    struct Compiler* enclosing;
     ObjFunction* function;
     FunctionType type;
     Local locals[UINT8_COUNT];
@@ -168,6 +169,7 @@ static void emit_return() {
 }
 
 static void init_compiler(Compiler* compiler, FunctionType type) {
+    compiler->enclosing = current;
     compiler->function = NULL; // @Note: dont generate garbage
     compiler->type = type;
     compiler->localCount = 0;
@@ -191,7 +193,7 @@ static ObjFunction* end_compiler() {
         disassemble_chunk(current_chunk(), func->name != NULL ? func->name->chars : "<script>");
     }
     #endif
-
+    current = current->enclosing;
     return func;
 }
 
@@ -307,6 +309,7 @@ static int parse_variable(const char* errorMsg) {
 }
 
 static void mark_initialized() {
+    if (current->scopeDepth == 0) return;
     current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
@@ -348,6 +351,29 @@ static void block() {
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static void function(FunctionType type) {
+    Compiler compiler;
+    init_compiler(&compiler, type);
+
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            current->function->arity++;
+            if (current->function->arity > 255) {
+                error_at_current("Cannot have more than 255 parameters.");
+            }
+            uint8_t constant = parse_variable("Expect parameter name.");
+            define_variable(constant);
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after function parameters.");
+    consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+    block();
+
+    ObjFunction* func = end_compiler();
+    emit_constant_bytes(make_constant(OBJ_VAL(function)));
+}
+
 static void let_declaration() {
     uint8_t global = parse_variable("Expect variable name.");
 
@@ -357,6 +383,13 @@ static void let_declaration() {
         emit_byte(OP_NIL);
     }
     consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    define_variable(global);
+}
+
+static void fun_declaration() {
+    uint8_t global = parse_variable("Expect function name.");
+    mark_initialized();
+    function(TYPE_FUNCTION);
     define_variable(global);
 }
 
@@ -500,7 +533,9 @@ static void statement() {
 }
 
 static void declaration() {
-    if (match(TOKEN_LET)) {
+    if (match(TOKEN_FUN)) {
+        fun_declaration();
+    } else if (match(TOKEN_LET)) {
         let_declaration();
     } else {
         statement();

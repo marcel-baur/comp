@@ -36,6 +36,10 @@ static ObjString* allocate_string(char* chars, int length, uint32_t hash) {
     return string;
 }
 
+static void print_func(ObjFunction* func) {
+    printf("<fn %s>", func->name->chars);
+}
+
 ObjString* copy_string(const char* chars, int length) {
     // char* heapChars = reallocate(NULL, 0, sizeof(char) * (length + 1));
     char* heapChars = ALLOCATE(char, length + 1);
@@ -50,6 +54,7 @@ ObjString* copy_string(const char* chars, int length) {
 void print_obj(Value value) {
     switch (OBJ_TYPE(value)) {
         case OBJ_STRING: printf("%s", AS_CSTRING(value)); break;
+        case OBJ_FUNCTION: print_func(AS_FUNCTION(value));
     }
 }
 
@@ -61,4 +66,12 @@ ObjString* take_string(char* chars, int length) {
         return interned;
     }
     return allocate_string(chars, length, hash);
+}
+
+ObjFunction* new_function() {
+    ObjFunction* func = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+    func->arity = 0;
+    func->name = NULL;
+    init_chunk(&func->chunk);
+    return func;
 }

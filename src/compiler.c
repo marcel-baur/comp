@@ -129,17 +129,11 @@ static void emit_constant_bytes(int idx) {
     if (idx < 256) {
         emit_byte(OP_CONSTANT);
         emit_byte((uint8_t) idx);
-        // write_chunk(current_chunk(), OP_CONSTANT, parser.previous.line);
-        // write_chunk(current_chunk(), (uint8_t) idx, parser.previous.line);
     } else {
         emit_byte(OP_CONSTANT_LONG);
         emit_byte((uint8_t) (idx & 0xff));
         emit_byte((uint8_t) ((idx >> 8) & 0xff));
         emit_byte((uint8_t) ((idx >> 16) & 0xff));
-        // write_chunk(current_chunk(), OP_CONSTANT_LONG, parser.previous.line);
-        // write_chunk(current_chunk(), (uint8_t) (idx & 0xff), parser.previous.line);
-        // write_chunk(current_chunk(), (uint8_t) ((idx >> 8) & 0xff), parser.previous.line);
-        // write_chunk(current_chunk(), (uint8_t) ((idx >> 16) & 0xff), parser.previous.line);
     }
 }
 
@@ -371,7 +365,7 @@ static void function(FunctionType type) {
     block();
 
     ObjFunction* func = end_compiler();
-    emit_constant_bytes(make_constant(OBJ_VAL(function)));
+    emit_constant_bytes(make_constant(OBJ_VAL(func)));
 }
 
 static void let_declaration() {
@@ -579,6 +573,24 @@ static void binary(bool canAssign) {
     }
 }
 
+static uint8_t argument_list() {
+    uint8_t argCount = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            if (argCount == 255) error("Cannot have more than 255 arguments.");
+            argCount++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return argCount;
+}
+
+static void call(bool canAssign) {
+    uint8_t argCount = argument_list();
+    emit_bytes(OP_CALL, argCount);
+}
+
 static int make_constant(Value value) {
     return add_constant(current_chunk(), value);
     // return (uint8_t)constant.pos;
@@ -642,7 +654,7 @@ static void variable(bool canAssign) {
 }
 
 ParseRule rules[] = {
-    [TOKEN_LEFT_PAREN] = {grouping, NULL, PREC_NONE},
+    [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
     [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
     [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},

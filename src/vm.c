@@ -41,11 +41,17 @@ static void runtime_error(const char* format, ...) {
     vfprintf(stderr, format, args);
     va_end(args);
     fputs("\n", stderr);
-
-    CallFrame* frame = &vm.frames[vm.frameCount - 1];
-    size_t instruction = frame->ip - frame->function->chunk.code - 1;
-    int line = frame->function->chunk.lines[instruction];
-    fprintf(stderr, "[line %d] in script\n", line);
+    for (int i = vm.frameCount - 1; i >= 0; i--) {
+        CallFrame* frame = &vm.frames[i];
+        ObjFunction* func = frame->function;
+        size_t instruction = frame->ip - func->chunk.code - 1;
+        fprintf(stderr, "[line %d] in script\n", func->chunk.lines[instruction]);
+        if (func->name == NULL) {
+            fprintf(stderr, "script\n");
+        } else {
+            fprintf(stderr, "%s()\n", func->name->chars);
+        }
+    }
     reset_stack();
 }
 
@@ -65,6 +71,35 @@ static void concatenate() {
 
     ObjString* result = take_string(chars, length);
     push(OBJ_VAL(result));
+}
+
+static bool call(ObjFunction* callee, int argCount) {
+    if (argCount != callee->arity) {
+        runtime_error("Expected %d arguments, got %d instead.", callee->arity, argCount);
+        return false;
+    }
+    if (vm.frameCount == FRAMES_MAX) {
+        runtime_error("Stack overflow.");
+        return false;
+    }
+    CallFrame* frame = &vm.frames[vm.frameCount++];
+    frame->function = callee;
+    frame->ip = callee->chunk.code;
+    frame->slots = vm.stackTop - argCount - 1;
+    return true;
+}
+
+static bool call_value(Value callee, int argCount) {
+    if (IS_OBJ(callee)) {
+        switch (OBJ_TYPE(callee)) {
+            case OBJ_FUNCTION:
+                return call(AS_FUNCTION(callee), argCount);
+            default: break;
+        }
+    }
+    printf("Is func: %d", IS_OBJ(callee));
+    runtime_error("Can only call functions and classes.");
+    return false;
 }
 
 static InterpretResult run() {
@@ -205,6 +240,14 @@ static InterpretResult run() {
                 frame->ip -= offset;
                 break;
             }
+            case OP_CALL: {
+                int argCount = READ_BYTE();
+                if (!call_value(peek(argCount), argCount)) {
+                    return INTERPRET_RUNTIME_ERR;
+                }
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
+            }
             default: return INTERPRET_OK;
         }
     }
@@ -226,6 +269,7 @@ InterpretResult interpret(const char* source) {
     } 
     printf("Compiled program.\n");
     push(OBJ_VAL(func));
+    call(func, 0);
     CallFrame* frame = &vm.frames[vm.frameCount++];
     frame->function = func;
     frame->ip = func->chunk.code;

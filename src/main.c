@@ -85,6 +85,5 @@ void test_stack() {
     write_chunk(&chunk, OP_NEGATE, 123);
     write_chunk(&chunk, OP_RETURN, 124);
     disassemble_chunk(&chunk, "test chunk");
-    interpret_chunk(&chunk);
     free_chunk(&chunk);
 }

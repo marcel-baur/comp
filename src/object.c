@@ -37,6 +37,10 @@ static ObjString* allocate_string(char* chars, int length, uint32_t hash) {
 }
 
 static void print_func(ObjFunction* func) {
+    if (func->name == NULL) {
+        printf("<script>");
+        return;
+    }
     printf("<fn %s>", func->name->chars);
 }
 

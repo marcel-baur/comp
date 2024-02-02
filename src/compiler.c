@@ -45,7 +45,14 @@ typedef struct {
     int depth;
 } Local;
 
+typedef enum {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT
+} FunctionType;
+
 typedef struct {
+    ObjFunction* function;
+    FunctionType type;
     Local locals[UINT8_COUNT];
     int localCount;
     int scopeDepth;
@@ -56,7 +63,7 @@ Compiler* current = NULL;
 Chunk* compilingChunk;
 
 static Chunk* current_chunk() {
-    return compilingChunk;
+    return &current->function->chunk;
 }
 
 static void error_at(Token* token, const char* message) {
@@ -160,19 +167,32 @@ static void emit_return() {
     emit_byte(OP_RETURN);
 }
 
-static void init_compiler(Compiler* compiler) {
+static void init_compiler(Compiler* compiler, FunctionType type) {
+    compiler->function = NULL; // @Note: dont generate garbage
+    compiler->type = type;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    compiler->function = new_function();
     current = compiler;
+    if (type != TYPE_SCRIPT) {
+        current->function->name = copy_string(parser.previous.start, parser.previous.length);
+    }
+    Local* local = &current->locals[current->localCount++];
+    local->depth = 0;
+    local->name.start = "";
+    local->name.length = 0;
 }
 
-static void end_compiler() {
+static ObjFunction* end_compiler() {
     emit_return();
+    ObjFunction* func = current->function;
     #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
-        disassemble_chunk(current_chunk(), "code");
+        disassemble_chunk(current_chunk(), func->name != NULL ? func->name->chars : "<script>");
     }
     #endif
+
+    return func;
 }
 
 static void begin_scope() {
@@ -633,19 +653,18 @@ static ParseRule* get_rule(TokenType type) {
     return &rules[type];
 }
 
-bool compile(const char *source, Chunk* chunk) {
+ObjFunction* compile(const char *source) {
     init_scanner(source);
     Compiler compiler;
-    init_compiler(&compiler);
+    init_compiler(&compiler, TYPE_SCRIPT);
     parser.hadError = false;
     parser.panicMode = false;
-    compilingChunk = chunk;
     advance();
     while (!match(TOKEN_EOF)) {
         declaration();
     }
-    end_compiler();
-    return !parser.hadError;
+    ObjFunction* func = end_compiler();
+    return !parser.hadError ? func : NULL;
     // int line = -1;
     // for (;;) {
     //     Token token = scan_token();

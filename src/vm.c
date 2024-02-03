@@ -87,9 +87,9 @@ static void concatenate() {
     push(OBJ_VAL(result));
 }
 
-static bool call(ObjFunction* callee, int argCount) {
-    if (argCount != callee->arity) {
-        runtime_error("Expected %d arguments, got %d instead.", callee->arity, argCount);
+static bool call(ObjFunction* fn, int argCount) {
+    if (argCount != fn->arity) {
+        runtime_error("Expected %d arguments, got %d instead.", fn->arity, argCount);
         return false;
     }
     if (vm.frameCount == FRAMES_MAX) {
@@ -97,8 +97,8 @@ static bool call(ObjFunction* callee, int argCount) {
         return false;
     }
     CallFrame* frame = &vm.frames[vm.frameCount++];
-    frame->function = callee;
-    frame->ip = callee->chunk.code;
+    frame->function = fn;
+    frame->ip = fn->chunk.code;
     frame->slots = vm.stackTop - argCount - 1;
     return true;
 }
@@ -119,7 +119,6 @@ static bool call_value(Value callee, int argCount) {
             default: break;
         }
     }
-    printf("Is func: %d", IS_OBJ(callee));
     runtime_error("Can only call functions and classes.");
     return false;
 }
@@ -127,7 +126,7 @@ static bool call_value(Value callee, int argCount) {
 static InterpretResult run() {
     CallFrame* frame = &vm.frames[vm.frameCount - 1];
     #define READ_BYTE() (*frame->ip++)
-    #define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
+    // #define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
     #define READ_CONSTANT_LONG() (frame->function->chunk.constants.values[READ_BYTE() | READ_BYTE() << 8 | READ_BYTE() << 16])
     #define READ_STRING() AS_STRING(READ_CONSTANT_LONG())
     #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
@@ -163,11 +162,11 @@ static InterpretResult run() {
                     return INTERPRET_RUNTIME_ERR;
                 }
                 push(NUMBER_VAL(-AS_NUMBER(pop()))); break;
-            case OP_CONSTANT: {
-                Value constant = READ_CONSTANT();
-                push(constant);
-                break;
-            }
+            // case OP_CONSTANT: {
+            //     Value constant = READ_CONSTANT();
+            //     push(constant);
+            //     break;
+            // }
             case OP_CONSTANT_LONG: {
                 Value constant = READ_CONSTANT_LONG();
                 push(constant);
@@ -195,7 +194,6 @@ static InterpretResult run() {
                 break;
             } 
             case OP_PRINT: {
-                // printf("Print inc\n");
                 print_value(pop());
                 printf("\n");
                 break;
@@ -288,7 +286,7 @@ static InterpretResult run() {
     #undef READ_BYTE
     #undef READ_STRING
     #undef READ_SHORT
-    #undef READ_CONSTANT
+    // #undef READ_CONSTANT
     #undef READ_CONSTANT_LONG
     #undef BINARY_OP
 }

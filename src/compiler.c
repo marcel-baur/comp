@@ -126,15 +126,15 @@ static void emit_byte(uint8_t byte) {
 }
 
 static void emit_constant_bytes(int idx) {
-    if (idx < 256) {
-        emit_byte(OP_CONSTANT);
-        emit_byte((uint8_t) idx);
-    } else {
-        emit_byte(OP_CONSTANT_LONG);
-        emit_byte((uint8_t) (idx & 0xff));
-        emit_byte((uint8_t) ((idx >> 8) & 0xff));
-        emit_byte((uint8_t) ((idx >> 16) & 0xff));
-    }
+    // if (idx < 256) {
+    //     emit_byte(OP_CONSTANT);
+    //     emit_byte((uint8_t) idx);
+    // } else {
+    emit_byte(OP_CONSTANT_LONG);
+    emit_byte((uint8_t) (idx & 0xff));
+    emit_byte((uint8_t) ((idx >> 8) & 0xff));
+    emit_byte((uint8_t) ((idx >> 16) & 0xff));
+    // }
 }
 
 static void emit_bytes(uint8_t b1, uint8_t b2) {
@@ -315,8 +315,8 @@ static void define_variable(uint8_t global) {
         mark_initialized();
         return;
     } 
-    // @Cleanup: use a CONST_16 type opcode (emit 3 bytes) for 256*256 variables. Adjust READ_STRING()!!
-    emit_long_bytes(OP_DEFINE_GLOBAL,(uint8_t) (global & 0xff), (uint8_t) ((global >> 8) & 0xff), ((global >> 16) & 0xff)); 
+    emit_long_bytes(OP_DEFINE_GLOBAL,(uint8_t) (global & 0xff), (uint8_t) ((global >> 8) & 0xff), (uint8_t) ((global >> 16) & 0xff)); 
+    // emit_long_bytes(OP_DEFINE_GLOBAL,(uint8_t) ((global >> 16) & 0xff), (uint8_t) ((global >> 8) & 0xff), (uint8_t) (global & 0xff)); 
 }
 
 static void and_(bool canAssign) {
@@ -351,6 +351,7 @@ static void block() {
 static void function(FunctionType type) {
     Compiler compiler;
     init_compiler(&compiler, type);
+    begin_scope(); // No need to end this, since the compiler just "ends" itself.
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
     if (!check(TOKEN_RIGHT_PAREN)) {
@@ -373,6 +374,7 @@ static void function(FunctionType type) {
 
 static void let_declaration() {
     uint8_t global = parse_variable("Expect variable name.");
+    printf("Global: %d\n", global);
 
     if (match(TOKEN_EQ)) {
         expression();
@@ -627,6 +629,7 @@ static void emit_constant(Value value) {
 
 static void number(bool canAssign) {
     double value = strtod(parser.previous.start, NULL);
+    printf("Assigning NUM: %f\n", value);
     emit_constant(NUMBER_VAL(value));
 }
 

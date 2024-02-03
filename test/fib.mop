@@ -1,20 +1,11 @@
-fun fib(n) {
-	print n;
-    if (n < 2) {
-		print "N retunr";
-		return n; 
+fun fib(num) {
+    if (num < 2) {
+		return num; 
 	}
-	let nminusone = n - 1;
-	let nminustwo = n - 2;
-	let one = fib(nminusone);
-	let two = fib(nminustwo);
-	print n;
-	print one;
-	print two;
-	print "-------------";
-	return one + two;
+	return fib(num - 2) + fib(num - 1);
 }
 
 let start = clock();
-print fib(5);
+
+print fib(35);
 print clock() - start;

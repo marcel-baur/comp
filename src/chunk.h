@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 typedef enum {
-	OP_CONSTANT,
+	// OP_CONSTANT,
 	OP_CONSTANT_LONG,
 	OP_NIL,
 	OP_TRUE,

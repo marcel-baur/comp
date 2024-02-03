@@ -45,13 +45,8 @@ int add_constant_generic(Chunk *chunk, Value value) {
 
 void write_constant(Chunk *chunk, Value value, int line) {
     int idx = add_constant(chunk, value);
-    if (idx < 256) {
-        write_chunk(chunk, OP_CONSTANT, line);
-        write_chunk(chunk, (uint8_t) idx, line);
-    } else {
-        write_chunk(chunk, OP_CONSTANT_LONG, line);
-        write_chunk(chunk, (uint8_t) (idx & 0xff), line);
-        write_chunk(chunk, (uint8_t) ((idx >> 8) & 0xff), line);
-        write_chunk(chunk, (uint8_t) ((idx >> 16) & 0xff), line);
-    }
+    write_chunk(chunk, OP_CONSTANT_LONG, line);
+    write_chunk(chunk, (uint8_t) (idx & 0xff), line);
+    write_chunk(chunk, (uint8_t) ((idx >> 8) & 0xff), line);
+    write_chunk(chunk, (uint8_t) ((idx >> 16) & 0xff), line);
 }

@@ -58,7 +58,8 @@ ObjString* copy_string(const char* chars, int length) {
 void print_obj(Value value) {
     switch (OBJ_TYPE(value)) {
         case OBJ_STRING: printf("%s", AS_CSTRING(value)); break;
-        case OBJ_FUNCTION: print_func(AS_FUNCTION(value));
+        case OBJ_FUNCTION: print_func(AS_FUNCTION(value)); break;
+        case OBJ_NATIVE: printf("<native fn>"); break;
     }
 }
 
@@ -78,4 +79,12 @@ ObjFunction* new_function() {
     func->name = NULL;
     init_chunk(&func->chunk);
     return func;
+}
+
+ObjNative* new_native(NativeFn fn) {
+    printf("Make new native fn...\n");
+    ObjNative* native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
+    native->fn = fn;
+    printf("Made new native fn!\n");
+    return native;
 }

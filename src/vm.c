@@ -11,18 +11,32 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <time.h>
 
 VM vm;
+
+static Value clock_native(int argCount, Value* args) {
+    return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+}
 
 static void reset_stack() {
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
 }
 
+static void define_native(const char* name, NativeFn fn) {
+    push(OBJ_VAL(copy_string(name, (int)strlen(name))));
+    push(OBJ_VAL(new_native(fn)));
+    table_set(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+    pop();
+    pop();
+}
+
 void initVM() {
     reset_stack();
     init_table(&vm.strings);
     init_table(&vm.globals);
+    define_native("clock", clock_native);
     vm.objects = NULL;
 }
 void freeVM() {
@@ -94,6 +108,14 @@ static bool call_value(Value callee, int argCount) {
         switch (OBJ_TYPE(callee)) {
             case OBJ_FUNCTION:
                 return call(AS_FUNCTION(callee), argCount);
+            case OBJ_NATIVE:{
+                NativeFn native = AS_NATIVE(callee);
+                Value result = native(argCount, vm.stackTop - argCount);
+                vm.stackTop -= argCount + 1;
+                push(result);
+                return true;
+            }
+                
             default: break;
         }
     }

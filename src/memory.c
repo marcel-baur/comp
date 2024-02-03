@@ -19,6 +19,10 @@ static void free_object(Obj* obj) {
             FREE(ObjFunction, func);
             break;
         }
+        case OBJ_NATIVE: {
+            FREE(ObjNative, obj);
+            break;
+        }
     }
 }
 

@@ -184,9 +184,9 @@ static ObjFunction* end_compiler() {
     emit_return();
     ObjFunction* func = current->function;
     #ifdef DEBUG_PRINT_CODE
-    if (!parser.hadError) {
-        disassemble_chunk(current_chunk(), func->name != NULL ? func->name->chars : "<script>");
-    }
+        if (!parser.hadError) {
+            disassemble_chunk(current_chunk(), func->name != NULL ? func->name->chars : "<script>");
+        }
     #endif
     current = current->enclosing;
     return func;
@@ -304,7 +304,9 @@ static int parse_variable(const char* errorMsg) {
 }
 
 static void mark_initialized() {
-    if (current->scopeDepth == 0) return;
+    if (current->scopeDepth == 0) {
+        return;
+    }
     current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
@@ -537,7 +539,6 @@ static void statement() {
     } else if (match(TOKEN_FOR)){
         for_statement();
     } else if (match(TOKEN_RETURN)) {
-        printf("Oh boy a return\n");
         return_statement();
     }
     else {

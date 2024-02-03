@@ -1,0 +1,9 @@
+fun a(num) {
+	if (num == 0) {
+	    return;
+	}
+	print num;
+	a(num - 1);
+}
+
+a(4);

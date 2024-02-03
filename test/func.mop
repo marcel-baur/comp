@@ -8,3 +8,15 @@ fun a() {
 }
 a();
 print "hello";
+
+fun add(x, y) {
+	return x + y;
+}
+
+print add(4, 5);
+
+fun add_two(x) {
+	return add(x, 2);
+}
+
+print add_two(1);

@@ -137,6 +137,13 @@ static void emit_constant_bytes(int idx) {
     // }
 }
 
+static void emit_bytes_by_opcode(OpCode operation, int content) {
+    emit_byte(operation);
+    emit_byte((uint8_t) (content & 0xff));
+    emit_byte((uint8_t) ((content >> 8) & 0xff));
+    emit_byte((uint8_t) ((content >> 16) & 0xff));
+}
+
 static void emit_bytes(uint8_t b1, uint8_t b2) {
     emit_byte(b1);
     emit_byte(b2);
@@ -369,7 +376,7 @@ static void function(FunctionType type) {
     block();
 
     ObjFunction* func = end_compiler();
-    emit_constant_bytes(make_constant(OBJ_VAL(func)));
+    emit_bytes_by_opcode(OP_CLOSURE, make_constant(OBJ_VAL(func)));
 }
 
 static void let_declaration() {
@@ -490,12 +497,10 @@ static void for_statement() {
 }
 
 static void return_statement() {
-    printf("Should be emitting return...\n");
     if (current->type == TYPE_SCRIPT) {
         error("Cannot return from global scope.");
     }
     if (match(TOKEN_SEMICOLON)) {
-        printf("Emitting return...\n");
         emit_return();
     } else {
         expression();
@@ -629,7 +634,6 @@ static void emit_constant(Value value) {
 
 static void number(bool canAssign) {
     double value = strtod(parser.previous.start, NULL);
-    printf("Assigning NUM: %f\n", value);
     emit_constant(NUMBER_VAL(value));
 }
 

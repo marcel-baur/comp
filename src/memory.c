@@ -23,6 +23,10 @@ static void free_object(Obj* obj) {
             FREE(ObjNative, obj);
             break;
         }
+        case OBJ_CLOSURE: {
+            FREE(ObjClosure, obj);
+            break;
+        }
     }
 }
 

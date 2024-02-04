@@ -57,7 +57,7 @@ static void runtime_error(const char* format, ...) {
     fputs("\n", stderr);
     for (int i = vm.frameCount - 1; i >= 0; i--) {
         CallFrame* frame = &vm.frames[i];
-        ObjFunction* func = frame->function;
+        ObjFunction* func = frame->closure->fn;
         size_t instruction = frame->ip - func->chunk.code - 1;
         fprintf(stderr, "[line %d] in script\n", func->chunk.lines[instruction]);
         if (func->name == NULL) {
@@ -87,9 +87,9 @@ static void concatenate() {
     push(OBJ_VAL(result));
 }
 
-static bool call(ObjFunction* fn, int argCount) {
-    if (argCount != fn->arity) {
-        runtime_error("Expected %d arguments, got %d instead.", fn->arity, argCount);
+static bool call(ObjClosure* closure, int argCount) {
+    if (argCount != closure->fn->arity) {
+        runtime_error("Expected %d arguments, got %d instead.", closure->fn->arity, argCount);
         return false;
     }
     if (vm.frameCount == FRAMES_MAX) {
@@ -97,17 +97,16 @@ static bool call(ObjFunction* fn, int argCount) {
         return false;
     }
     CallFrame* frame = &vm.frames[vm.frameCount++];
-    frame->function = fn;
-    frame->ip = fn->chunk.code;
+    frame->closure = closure;
+    frame->ip = closure->fn->chunk.code;
     frame->slots = vm.stackTop - argCount - 1;
     return true;
 }
 
 static bool call_value(Value callee, int argCount) {
     if (IS_OBJ(callee)) {
+        // printf("Type: %d, Closure: %d\n", callee.type, OBJ_CLOSURE);
         switch (OBJ_TYPE(callee)) {
-            case OBJ_FUNCTION:
-                return call(AS_FUNCTION(callee), argCount);
             case OBJ_NATIVE:{
                 NativeFn native = AS_NATIVE(callee);
                 Value result = native(argCount, vm.stackTop - argCount);
@@ -115,7 +114,7 @@ static bool call_value(Value callee, int argCount) {
                 push(result);
                 return true;
             }
-                
+            case OBJ_CLOSURE: return call(AS_CLOSURE(callee), argCount);
             default: break;
         }
     }
@@ -127,7 +126,7 @@ static InterpretResult run() {
     CallFrame* frame = &vm.frames[vm.frameCount - 1];
     #define READ_BYTE() (*frame->ip++)
     // #define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
-    #define READ_CONSTANT_LONG() (frame->function->chunk.constants.values[READ_BYTE() | READ_BYTE() << 8 | READ_BYTE() << 16])
+    #define READ_CONSTANT_LONG() (frame->closure->fn->chunk.constants.values[READ_BYTE() | READ_BYTE() << 8 | READ_BYTE() << 16])
     #define READ_STRING() AS_STRING(READ_CONSTANT_LONG())
     #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
     #define BINARY_OP(value_type, op) \
@@ -145,7 +144,7 @@ static InterpretResult run() {
     #endif
     for (;;) {
         #ifdef DEBUG_TRACE_EXECUTION
-            disassemble_instruction(&frame->function->chunk, (int)(frame->ip - frame->function->chunk.code));
+            disassemble_instruction(&frame->closure->fn->chunk, (int)(frame->ip - frame->closure->fn->chunk.code));
             printf("     ");
             for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
                 printf("[  ");
@@ -271,6 +270,12 @@ static InterpretResult run() {
                 frame->ip -= offset;
                 break;
             }
+            case OP_CLOSURE: {
+                ObjFunction* func = AS_FUNCTION(READ_CONSTANT_LONG());
+                ObjClosure* closure = new_closure(func);
+                push(OBJ_VAL(closure));
+                break;
+            }
             case OP_CALL: {
                 int argCount = READ_BYTE();
                 if (!call_value(peek(argCount), argCount)) {
@@ -300,11 +305,15 @@ InterpretResult interpret(const char* source) {
     } 
     printf("Compiled program.\n");
     push(OBJ_VAL(func));
-    call(func, 0);
-    CallFrame* frame = &vm.frames[vm.frameCount++];
-    frame->function = func;
-    frame->ip = func->chunk.code;
-    frame->slots = vm.stack;
+
+    ObjClosure* closure = new_closure(func);
+    pop();
+    push(OBJ_VAL(closure));
+    call(closure, 0);
+    // CallFrame* frame = &vm.frames[vm.frameCount++];
+    // frame->closure = closure;
+    // frame->ip = func->chunk.code;
+    // frame->slots = vm.stack;
     return run();
 }
 

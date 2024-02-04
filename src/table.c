@@ -67,7 +67,6 @@ bool table_set(Table* table, ObjString* key, Value value) {
         adjust_capacity(table, capacity);
     }
     // printf("Still working here\n"); // @Hack: this seems to stop a fatal error?!
-    printf("Calling Set! Key: %s, Value %f\n", key->chars, AS_NUMBER(value));
     Entry* entry = find_entry(table->entries, table->capacity, key);
     bool isNewKey = entry->key == NULL;
     if (isNewKey && IS_NIL(entry->value)) table->count++;

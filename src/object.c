@@ -60,6 +60,7 @@ void print_obj(Value value) {
         case OBJ_STRING: printf("%s", AS_CSTRING(value)); break;
         case OBJ_FUNCTION: print_func(AS_FUNCTION(value)); break;
         case OBJ_NATIVE: printf("<native fn>"); break;
+        case OBJ_CLOSURE: print_func(AS_CLOSURE(value)->fn); break;
     }
 }
 
@@ -87,4 +88,10 @@ ObjNative* new_native(NativeFn fn) {
     native->fn = fn;
     printf("Made new native fn!\n");
     return native;
+}
+
+ObjClosure* new_closure(ObjFunction* fn) {
+    ObjClosure* closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
+    closure->fn = fn;
+    return closure;
 }

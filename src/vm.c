@@ -22,6 +22,7 @@ static Value clock_native(int argCount, Value* args) {
 static void reset_stack() {
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
+    vm.openUpvalues = NULL;
 }
 
 static void define_native(const char* name, NativeFn fn) {
@@ -123,8 +124,32 @@ static bool call_value(Value callee, int argCount) {
 }
 
 static ObjUpvalue* capture_upvalue(Value* local) {
-    ObjUpvalue* uv = new_upvalue(local);
-    return uv;
+    ObjUpvalue* prevUv = NULL;
+    ObjUpvalue* uv = vm.openUpvalues;
+    while (uv != NULL && uv->location > local) {
+        prevUv = uv;
+        uv = uv->next;
+    }
+    if (uv != NULL && uv->location == local) {
+        return uv;
+    }
+    ObjUpvalue* createdUv = new_upvalue(local);
+    createdUv->next = uv;
+    if (prevUv == NULL) {
+        vm.openUpvalues = createdUv;
+    } else {
+        prevUv->next = createdUv;
+    }
+    return createdUv;
+}
+
+static void close_upvalues(Value* last) {
+    while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+        ObjUpvalue* uv = vm.openUpvalues;
+        uv->closed = *uv->location;
+        uv->location = &uv->closed;
+        vm.openUpvalues = uv->next;
+    }
 }
 
 static InterpretResult run() {
@@ -204,6 +229,7 @@ static InterpretResult run() {
             }
             case OP_RETURN: {
                 Value result = pop();
+                close_upvalues(frame->slots);
                 vm.frameCount--;
                 if (vm.frameCount == 0) {
                     pop();
@@ -283,6 +309,11 @@ static InterpretResult run() {
             case OP_SET_UPVALUE: {
                 uint8_t slot = READ_BYTE();
                 *frame->closure->upvalues[slot]->location = peek(0);
+                break;
+            }
+            case OP_CLOSE_UPVALUE: {
+                close_upvalues(vm.stackTop - 1);
+                pop();
                 break;
             }
             case OP_CLOSURE: {

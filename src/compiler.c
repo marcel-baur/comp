@@ -45,6 +45,11 @@ typedef struct {
     int depth;
 } Local;
 
+typedef struct {
+    uint8_t index;
+    bool isLocal;
+} Upvalue;
+
 typedef enum {
     TYPE_FUNCTION,
     TYPE_SCRIPT
@@ -57,6 +62,7 @@ typedef struct Compiler {
     Local locals[UINT8_COUNT];
     int localCount;
     int scopeDepth;
+    Upvalue upvalues[UINT8_COUNT];
 } Compiler;
 
 Parser parser;
@@ -288,6 +294,40 @@ static int resolve_local(Compiler* comp, Token* name) {
     return -1;
 }
 
+static int add_upvalue(Compiler* comp, uint8_t index, bool isLocal) {
+    int upvalueCount = comp->function->upvalueCount;
+    for (int i = 0; i < upvalueCount; i++) {
+        Upvalue* uv = &comp->upvalues[i];
+        if (uv->index == index && uv->isLocal == isLocal) {
+            return i;
+        }
+    }
+
+    if (upvalueCount == UINT8_COUNT) {
+        error("Too many closure variables in function.");
+        return 0;
+    }
+    comp->upvalues[upvalueCount].isLocal = isLocal;
+    comp->upvalues[upvalueCount].index = index;
+    return comp->function->upvalueCount++;
+}
+
+static int resolve_upvalue(Compiler* comp, Token* name) {
+    if (comp->enclosing == NULL) return -1;
+
+    int local = resolve_local(comp->enclosing, name);
+    if (local != -1) {
+        return add_upvalue(comp, (uint8_t) local, true);
+    }
+
+    int uv = resolve_upvalue(comp->enclosing, name);
+    if (uv != -1) {
+        return add_upvalue(comp, (uint8_t) uv, false);
+    }
+
+    return -1;
+}
+
 static void declare_variable() {
     if (current->scopeDepth == 0) return;
     Token* name = &parser.previous;
@@ -377,6 +417,11 @@ static void function(FunctionType type) {
 
     ObjFunction* func = end_compiler();
     emit_bytes_by_opcode(OP_CLOSURE, make_constant(OBJ_VAL(func)));
+
+    for (int i = 0; i < func->upvalueCount; i++) {
+        emit_byte(compiler.upvalues[i].isLocal ? 1 : 0);
+        emit_byte(compiler.upvalues[i].index); // @Improvement: This will need to be done in 3 bytes for LONG UVs
+    }
 }
 
 static void let_declaration() {
@@ -663,7 +708,18 @@ static void named_variable(Token name, bool canAssign) {
         } else {
             emit_bytes(getOp, arg);
         }
-    } else {
+    } else if ((arg = resolve_upvalue(current, &name)) != -1) {
+        // @Cleanup. This is a mess because of 8 Bit local variables. Not AS important
+        getOp = OP_GET_UPVALUE;
+        setOp = OP_SET_UPVALUE;
+        if (canAssign && match(TOKEN_EQ)) {
+            expression();
+            emit_bytes(setOp, arg);
+        } else {
+            emit_bytes(getOp, arg);
+        }
+    }
+    else {
         int arg = identifier_constant(&name);
         getOp = OP_GET_GLOBAL;
         setOp = OP_SET_GLOBAL;

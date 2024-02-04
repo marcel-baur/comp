@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "chunk.h"
 #include "debug.h"
+#include "object.h"
 #include "value.h"
 
 static int simple_instruction(const char* name, int offset) {
@@ -101,6 +102,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return jump_instruction("OP_LOOP", -1, chunk, offset);
     case OP_CALL:
         return byte_instruction("OP_CALL", chunk, offset);
+    case OP_GET_UPVALUE:
+        return byte_instruction("OP_GET_UPVALUE", chunk, offset);
+    case OP_SET_UPVALUE:
+        return byte_instruction("OP_SET_UPVALUE", chunk, offset);
     case OP_CLOSURE: {
             // offset++;
             uint32_t constant = chunk->code[offset + 1] | 
@@ -109,7 +114,14 @@ int disassemble_instruction(Chunk *chunk, int offset) {
             printf("%-16s %4d '", "OP_CLOSURE", constant);
             print_value(chunk->constants.values[constant]);
             printf("\n");
-            return offset+4;
+            ObjFunction* func = AS_FUNCTION(chunk->constants.values[constant]);
+            for (int j = 0; j < func->upvalueCount; j++) {
+                int isLocal = chunk->code[offset++];
+                int idx = chunk ->code[offset++];
+                printf("%04d    |                                %s %d\n",
+                       offset - 2, isLocal ? "local" : "upvalue", idx);
+            }
+            return offset+4; // + 2
         }
     default:
         printf("Unknown opcode %d\n", instruction);

@@ -1,0 +1,10 @@
+fun outer() {
+	let x = "out";
+	fun inner() {
+		print x;
+	}
+	return inner;
+}
+
+let closure = outer();
+closure();

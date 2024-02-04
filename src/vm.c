@@ -122,6 +122,11 @@ static bool call_value(Value callee, int argCount) {
     return false;
 }
 
+static ObjUpvalue* capture_upvalue(Value* local) {
+    ObjUpvalue* uv = new_upvalue(local);
+    return uv;
+}
+
 static InterpretResult run() {
     CallFrame* frame = &vm.frames[vm.frameCount - 1];
     #define READ_BYTE() (*frame->ip++)
@@ -270,10 +275,29 @@ static InterpretResult run() {
                 frame->ip -= offset;
                 break;
             }
+            case OP_GET_UPVALUE: {
+                uint8_t slot = READ_BYTE();
+                push(*frame->closure->upvalues[slot]->location);
+                break;
+            }
+            case OP_SET_UPVALUE: {
+                uint8_t slot = READ_BYTE();
+                *frame->closure->upvalues[slot]->location = peek(0);
+                break;
+            }
             case OP_CLOSURE: {
                 ObjFunction* func = AS_FUNCTION(READ_CONSTANT_LONG());
                 ObjClosure* closure = new_closure(func);
                 push(OBJ_VAL(closure));
+                for (int i = 0; i < closure->upvalueCount; i++) {
+                    uint8_t isLocal = READ_BYTE();
+                    uint8_t idx = READ_BYTE();
+                    if (isLocal) {
+                        closure->upvalues[i] = capture_upvalue(frame->slots + idx);
+                    } else {
+                        closure->upvalues[i] = frame->closure->upvalues[idx];
+                    }
+                }
                 break;
             }
             case OP_CALL: {
@@ -310,10 +334,6 @@ InterpretResult interpret(const char* source) {
     pop();
     push(OBJ_VAL(closure));
     call(closure, 0);
-    // CallFrame* frame = &vm.frames[vm.frameCount++];
-    // frame->closure = closure;
-    // frame->ip = func->chunk.code;
-    // frame->slots = vm.stack;
     return run();
 }
 

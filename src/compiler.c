@@ -4,6 +4,7 @@
 #include <string.h>
 #include "chunk.h"
 #include "common.h"
+#include "memory.h"
 #include "compiler.h"
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -815,4 +816,12 @@ ObjFunction* compile(const char *source) {
     //     printf("%2d '%.*s'\n", token.type, token.length, token.start);
     //     if (token.type == TOKEN_EOF) break;
     // }
+}
+
+void mark_compiler_roots() {
+    Compiler *comp = current;
+    while (comp != NULL) {
+        mark_object((Obj*) comp->function);
+        comp = comp->enclosing;
+    }
 }

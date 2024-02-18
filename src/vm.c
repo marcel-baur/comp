@@ -35,6 +35,9 @@ static void define_native(const char* name, NativeFn fn) {
 
 void initVM() {
     reset_stack();
+    vm.grayCount = 0;
+    vm.grayCapacity = 0;
+    vm.grayStack = NULL;
     init_table(&vm.strings);
     init_table(&vm.globals);
     define_native("clock", clock_native);

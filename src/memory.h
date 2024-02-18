@@ -2,6 +2,7 @@
 #define comp_memory_h
 
 #include "common.h"
+#include "value.h"
 
 #define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
 
@@ -17,5 +18,11 @@
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
 
 void free_objects();
+
+void mark_object(Obj *object);
+
+void mark_value(Value value);
+
+void collect_garbage();
 
 #endif

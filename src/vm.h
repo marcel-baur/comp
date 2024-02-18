@@ -24,6 +24,10 @@ typedef struct {
 	Table globals;
 	ObjUpvalue* openUpvalues;
 	Obj* objects;
+
+	int grayCapacity;
+	int grayCount;
+	Obj **grayStack;
 } VM;
 
 typedef enum {

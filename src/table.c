@@ -122,6 +122,14 @@ ObjString* table_find_string(Table* table, const char* chars, int length, uint32
     }
 }
 
+void mark_table(Table *table) {
+    for (int i = 0; i < table->capacity; i++) {
+        Entry *entry = &table->entries[i];
+        mark_object((Obj*)entry->key);
+        mark_value(entry->value);
+    }
+}
+
 
 
 

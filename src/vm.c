@@ -38,6 +38,8 @@ void initVM() {
     vm.grayCount = 0;
     vm.grayCapacity = 0;
     vm.grayStack = NULL;
+    vm.bytesallocated = 0;
+    vm.nextgc = 1024 * 1024;
     init_table(&vm.strings);
     init_table(&vm.globals);
     define_native("clock", clock_native);
@@ -78,8 +80,8 @@ static bool is_falsey(Value value) {
 }
 
 static void concatenate() {
-    ObjString* b = AS_STRING(pop());
-    ObjString* a = AS_STRING(pop());
+    ObjString* b = AS_STRING(peek(0));
+    ObjString* a = AS_STRING(peek(1));
 
     int length = a->length + b->length;
     char* chars = ALLOCATE(char, length + 1);
@@ -88,6 +90,8 @@ static void concatenate() {
     chars[length] = '\0';
 
     ObjString* result = take_string(chars, length);
+    pop(); // @Note: cleanup b and a
+    pop();
     push(OBJ_VAL(result));
 }
 

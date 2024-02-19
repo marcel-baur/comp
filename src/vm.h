@@ -25,6 +25,9 @@ typedef struct {
 	ObjUpvalue* openUpvalues;
 	Obj* objects;
 
+	size_t bytesallocated;
+	size_t nextgc;
+
 	int grayCapacity;
 	int grayCount;
 	Obj **grayStack;

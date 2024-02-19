@@ -130,20 +130,11 @@ void mark_table(Table *table) {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+void table_remove_white(Table *table) {
+    for (int i = 0; i < table->capacity; i++) {
+        Entry *e = &table->entries[i];
+        if (e->key != NULL && !e->key->obj.isMarked) {
+            table_delete(table, e->key);
+        }
+    }
+}
